@@ -3,7 +3,7 @@ name: 🚀 One-Step Deploy & Push
 on:
   push:
     branches:
-      - main  # This triggers the workflow when code is pushed to the `main` branch
+      - main
 
 jobs:
   deploy:
@@ -23,38 +23,36 @@ jobs:
           port: 22
           script_timeout: 10m
           script: |
-            set -e  # Exit immediately if any command fails
+            set -e
 
-            # Change to project directory
             echo "--- Changing to project directory ---"
-            cd /home/ubuntu/mern-ecommerce || { echo "Directory not found"; exit 1; }
+            cd /home/ubuntu/mern-ecommerce || { echo "Directory not found!"; exit 1; }
 
-            # Pull the latest code from GitHub
+            echo "--- Marking repo as safe for Git ---"
+            git config --global --add safe.directory /home/ubuntu/mern-ecommerce
+
             echo "--- Pulling latest code ---"
             git pull origin main
 
-            # Docker cleanup and setup
             echo "--- Docker cleanup ---"
             docker compose down --remove-orphans
 
-            # Build and start containers
             echo "--- Building and starting containers ---"
             docker compose up -d --build --remove-orphans
 
-            # Docker Hub login
             echo "--- Logging into Docker Hub ---"
-            echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin || { echo "Docker login failed"; exit 1; }
+            echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin || {
+              echo "Docker login failed"; exit 1;
+            }
 
-            # Tagging and pushing images
             echo "--- Tagging and pushing images ---"
             docker tag frontend:latest ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
             docker tag backend:latest ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
             docker push ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
             docker push ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
 
-            # Seeding the backend database
             echo "--- Seeding database ---"
-            sleep 10  # Wait for backend to start
+            sleep 10  # Wait for backend to be ready
             backend_container=$(docker ps -qf "name=backend")
             if [ -z "$backend_container" ]; then
               echo "Backend container not found!"
@@ -63,5 +61,4 @@ jobs:
             fi
             docker exec $backend_container npm run seed
 
-            # Deployment complete
             echo "--- Deployment complete ---"
