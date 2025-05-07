@@ -12,10 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build Docker images
+      - name: Build frontend
         uses: adrielcodeco/docker-compose-run-action@v1
         with:
           compose-file: './docker-compose.yaml'
+          service: frontend
+          command: build
+
+      - name: Build backend
+        uses: adrielcodeco/docker-compose-run-action@v1
+        with:
+          compose-file: './docker-compose.yaml'
+          service: backend
           command: build
 
   scan-files:
@@ -56,13 +64,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build Docker images
+      - name: Build frontend
         uses: adrielcodeco/docker-compose-run-action@v1
         with:
           compose-file: './docker-compose.yaml'
+          service: frontend
           command: build
 
-      - name: Scan with Trivy
+      - name: Build backend
+        uses: adrielcodeco/docker-compose-run-action@v1
+        with:
+          compose-file: './docker-compose.yaml'
+          service: backend
+          command: build
+
+      - name: Scan frontend with Trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: frontend:latest
