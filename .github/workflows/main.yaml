@@ -26,11 +26,11 @@ jobs:
             set -e  # Exit immediately if any command fails
             
             echo "--- Changing to project directory ---"
-            cd /home/ubuntu/mern-ecommerce  # Update this path if needed
+              # Update this path if needed
             
             echo "--- Pulling latest code ---"
             git pull origin main
-            
+            cd /home/ubuntu/mern-ecommerce
             echo "--- Docker cleanup ---"
             docker compose down --remove-orphans
             
