@@ -1,11 +1,9 @@
-#version: '3.8'
+version: '3.8'
 
 services:
   frontend:
     build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:3000"
+    ports: ["3000:3000"]
     depends_on:
       - backend
     environment:
@@ -19,14 +17,12 @@ services:
 
   backend:
     build: ./backend
-    container_name: backend
-    ports:
-      - "8000:8000"
+    ports: ["8000:8000"]
     depends_on:
       mongo:
         condition: service_healthy
     environment:
-      - MONGO_URI=mongodb://appuser:apppassword@mongo:27017/mern_stack?authSource=mern_stack
+      - MONGO_URI=mongodb://appuser:apppassword@mongo:27017/mern_stack?authSource=admin
       - ORIGIN=http://3.222.246.46:3000
     volumes:
       - ./backend:/app
@@ -36,7 +32,6 @@ services:
 
   mongo:
     image: mongo
-    container_name: mongo_DB
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
@@ -50,10 +45,12 @@ services:
     networks:
       - mern_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh -u root -p rootpassword --quiet --authenticationDatabase admin
+      test: |
+        mongosh --eval "db.adminCommand('ping')" -u root -p rootpassword --authenticationDatabase admin --quiet
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
 networks:
   mern_network:
