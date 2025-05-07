@@ -3,7 +3,7 @@ name: 🚀 One-Step Deploy & Push
 on:
   push:
     branches:
-      - main
+      - main  # This triggers the workflow when code is pushed to the `main` branch
 
 jobs:
   deploy:
@@ -24,28 +24,35 @@ jobs:
           script_timeout: 10m
           script: |
             set -e  # Exit immediately if any command fails
-            
+
+            # Change to project directory
             echo "--- Changing to project directory ---"
-              # Update this path if needed
-            
+            cd /home/ubuntu/mern-ecommerce || { echo "Directory not found"; exit 1; }
+
+            # Pull the latest code from GitHub
             echo "--- Pulling latest code ---"
             git pull origin main
-            cd /home/ubuntu/mern-ecommerce
+
+            # Docker cleanup and setup
             echo "--- Docker cleanup ---"
             docker compose down --remove-orphans
-            
+
+            # Build and start containers
             echo "--- Building and starting containers ---"
             docker compose up -d --build --remove-orphans
-            
+
+            # Docker Hub login
             echo "--- Logging into Docker Hub ---"
             echo "${{ secrets.DOCKER_HUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin || { echo "Docker login failed"; exit 1; }
-            
+
+            # Tagging and pushing images
             echo "--- Tagging and pushing images ---"
             docker tag frontend:latest ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
             docker tag backend:latest ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
             docker push ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
             docker push ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
-            
+
+            # Seeding the backend database
             echo "--- Seeding database ---"
             sleep 10  # Wait for backend to start
             backend_container=$(docker ps -qf "name=backend")
@@ -55,5 +62,6 @@ jobs:
               exit 1
             fi
             docker exec $backend_container npm run seed
-            
+
+            # Deployment complete
             echo "--- Deployment complete ---"
