@@ -14,7 +14,7 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker-compose -f docker-compose.yaml up -d
+          docker-compose -f docker-compose.yaml build
 
   scan-files:
     name: 🔍 Scan Source Code
