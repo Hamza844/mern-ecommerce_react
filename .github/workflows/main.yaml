@@ -12,27 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 🔥 Critical Fix: Set up Docker and Docker Compose first
       - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
-      # 🔥 Alternative: Install docker-compose if needed (uncomment if still having issues)
-      # - name: Install docker-compose
-      #   run: |
-      #     sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-      #     sudo chmod +x /usr/local/bin/docker-compose
+      - name: Verify Docker installation
+        run: |
+          docker --version
+          docker compose version
 
       - name: Build frontend
-        uses: docker/compose-action@v1  # 🔥 Better maintained alternative
-        with:
-          compose-file: './docker-compose.yaml'
-          command: run --rm frontend build
+        run: docker compose -f ./docker-compose.yaml build frontend
+
+      - name: Run frontend build
+        run: docker compose -f ./docker-compose.yaml run --rm frontend npm run build
 
       - name: Build backend
-        uses: docker/compose-action@v1
-        with:
-          compose-file: './docker-compose.yaml'
-          command: run --rm backend build
+        run: docker compose -f ./docker-compose.yaml build backend
 
   scan-files:
     name: 🔍 Scan Source Code
@@ -60,10 +55,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Run frontend tests
-        run: npm test --prefix frontend -- --watchAll=false || true
+        run: docker compose -f ./docker-compose.yaml run --rm frontend npm test -- --watchAll=false || true
 
       - name: Run backend tests
-        run: npm test --prefix backend || true
+        run: docker compose -f ./docker-compose.yaml run --rm backend npm test || true
 
   scan-docker:
     name: 🐳 Docker Image Scan
