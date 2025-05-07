@@ -1,0 +1,63 @@
+#version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_BASE_URL=http://3.222.246.46:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - mern_network
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://appuser:apppassword@mongo:27017/mern_stack?authSource=mern_stack
+      - ORIGIN=http://3.222.246.46:3000
+    volumes:
+      - ./backend:/app
+    networks:
+      - mern_network
+    restart: always
+
+  mongo:
+    image: mongo
+    container_name: mongo_DB
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+      MONGO_INITDB_DATABASE: admin
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - mern_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh -u root -p rootpassword --quiet --authenticationDatabase admin
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  mern_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
