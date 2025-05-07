@@ -13,8 +13,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Build Docker images
-        run: |
-          docker-compose -f docker-compose.yaml build
+        uses: adrielcodeco/docker-compose-run-action@v1
+        with:
+          compose-file: './docker-compose.yaml'
+          command: build
 
   scan-files:
     name: 🔍 Scan Source Code
@@ -55,7 +57,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Build Docker images
-        run: docker-compose -f docker-compose.yaml build
+        uses: adrielcodeco/docker-compose-run-action@v1
+        with:
+          compose-file: './docker-compose.yaml'
+          command: build
 
       - name: Scan with Trivy
         uses: aquasecurity/trivy-action@master
@@ -101,9 +106,8 @@ jobs:
           script: |
             cd /home/ubuntu/mern-ecommerce
             git pull origin main
-            docker-compose down
-            docker-compose pull
-            docker-compose up -d --build
+            docker compose down
+            docker compose pull
+            docker compose up -d --build
             cd /home/ubuntu/mern-ecommerce/backend
             npm run seed
-
