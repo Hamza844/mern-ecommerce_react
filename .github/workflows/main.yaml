@@ -21,21 +21,18 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          script_timeout: 15m
+          script_timeout: 10m
           script: |
             set -e
 
             echo "--- Changing to project directory ---"
             cd /home/ubuntu/mern-ecommerce || { echo "Directory not found!"; exit 1; }
 
-            echo "--- Fixing repository permissions ---"
-            sudo chown -R $USER:$USER .
-            sudo chmod -R 755 .
-            find .git -type d -exec chmod 755 {} \;
-            find .git -type f -exec chmod 644 {} \;
-
             echo "--- Marking repo as safe for Git ---"
             git config --global --add safe.directory /home/ubuntu/mern-ecommerce
+
+            echo "--- Resetting local changes ---"
+            git reset --hard HEAD
 
             echo "--- Pulling latest code ---"
             git pull origin main
@@ -58,14 +55,11 @@ jobs:
             docker push ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
 
             echo "--- Seeding database ---"
-            sleep 15  # Increased wait time
-            backend_container=$(docker ps -qf "name=backend" || true)
+            sleep 10
+            backend_container=$(docker ps -qf "name=backend")
             if [ -z "$backend_container" ]; then
               echo "Backend container not found!"
-              echo "Current containers:"
               docker ps -a
-              echo "Logs from backend:"
-              docker logs $(docker ps -aqf "name=backend") || true
               exit 1
             fi
             docker exec $backend_container npm run seed
