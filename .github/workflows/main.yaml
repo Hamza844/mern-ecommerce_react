@@ -26,7 +26,11 @@ jobs:
             set -e  # Exit immediately if any command fails
             
             echo "--- Changing to project directory ---"
-            cd /home/ubuntu/your-project-name || { echo "Directory not found"; exit 1; }
+            if [ ! -d "/home/ubuntu/your-project-name" ]; then
+              echo "Directory not found. Please check your directory path!"
+              exit 1
+            fi
+            cd /home/ubuntu/your-project-name
             
             echo "--- Pulling latest code ---"
             git pull origin main
