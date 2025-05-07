@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+env:
+  NODE_ENV: production
+  COMPOSE_BAKE: true  # Better build performance
+
 jobs:
   build:
     name: 🧱 Build App
@@ -15,16 +19,18 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
-      - name: Verify Docker installation
+      - name: Verify Docker
+        run: docker --version && docker compose version
+
+      # Fix for React peer dependency conflict
+      - name: Resolve frontend dependencies
+        working-directory: ./frontend
         run: |
-          docker --version
-          docker compose version
+          npm install --legacy-peer-deps
+          npm run build
 
-      - name: Build frontend
+      - name: Build frontend image
         run: docker compose -f ./docker-compose.yaml build frontend
-
-      - name: Run frontend build
-        run: docker compose -f ./docker-compose.yaml run --rm frontend npm run build
 
       - name: Build backend
         run: docker compose -f ./docker-compose.yaml build backend
@@ -36,16 +42,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install dependencies for scan
+      - name: Install dependencies with legacy peer deps
         run: |
-          npm install --prefix frontend
+          npm install --prefix frontend --legacy-peer-deps
           npm install --prefix backend
 
-      - name: Run ESLint on frontend
-        run: npx --prefix frontend eslint . || true
-
-      - name: Run ESLint on backend
-        run: npx --prefix backend eslint . || true
+      - name: Run ESLint
+        run: |
+          npx --prefix frontend eslint . || true
+          npx --prefix backend eslint . || true
 
   test:
     name: 🧪 Run Tests
@@ -54,11 +59,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Run frontend tests
-        run: docker compose -f ./docker-compose.yaml run --rm frontend npm test -- --watchAll=false || true
-
-      - name: Run backend tests
-        run: docker compose -f ./docker-compose.yaml run --rm backend npm test || true
+      - name: Run tests
+        run: |
+          docker compose -f ./docker-compose.yaml run --rm frontend npm test -- --watchAll=false || true
+          docker compose -f ./docker-compose.yaml run --rm backend npm test || true
 
   scan-docker:
     name: 🐳 Docker Image Scan
@@ -66,31 +70,20 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@v2
 
-      - name: Build frontend image
-        run: docker compose -f ./docker-compose.yaml build frontend
-
-      - name: Build backend image
-        run: docker compose -f ./docker-compose.yaml build backend
-
-      - name: Scan frontend with Trivy
+      - name: Rebuild images
+        run: |
+          docker compose -f ./docker-compose.yaml build
+          
+      - name: Scan images
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: frontend:latest
+          image-ref: 'frontend:latest,backend:latest'
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
-
-      - name: Scan backend with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: backend:latest
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
 
   push-image:
     name: ☁️ Push Docker Images
@@ -105,14 +98,11 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Tag & Push frontend
+      - name: Push images
         run: |
           docker tag frontend:latest ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
-
-      - name: Tag & Push backend
-        run: |
           docker tag backend:latest ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/frontend:latest
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/backend:latest
 
   deploy:
@@ -120,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: push-image
     steps:
-      - name: SSH into Server
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -132,5 +122,4 @@ jobs:
             docker compose down
             docker compose pull
             docker compose up -d --build
-            cd /home/ubuntu/mern-ecommerce/backend
-            npm run seed
+            docker exec backend npm run seed
