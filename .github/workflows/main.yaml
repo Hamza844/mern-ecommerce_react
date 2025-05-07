@@ -47,11 +47,6 @@ jobs:
           npm install --prefix frontend --legacy-peer-deps
           npm install --prefix backend
 
-      - name: Run ESLint
-        run: |
-          npx --prefix frontend eslint . || true
-          npx --prefix backend eslint . || true
-
   test:
     name: 🧪 Run Tests
     runs-on: ubuntu-latest
