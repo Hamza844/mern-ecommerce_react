@@ -32,3 +32,4 @@ jobs:
             backend_container=$(docker ps -qf "name=backend")
             docker exec $backend_container npm run seed
 #add commit1
+# now check
